@@ -12,19 +12,20 @@ grounTs = dir([path '*.png']);
 
 disp('Loading the Model ...')
 net = load('../models/imagenet-vgg-verydeep-16.mat');
-
+clc;
 %% Start the procedure and repeat for all images
 create = true;
-curr_pos = 1;
+curr_pos = 0;
 
-for i=1:2
-    fprintf('Processing %d/500...\n',i);
+for i=1:10
+    fprintf('Processing %d/10...\n',i);
     
     im = imread([path files(i).name]);
     gt = imread([path grounTs(i).name]);
     
     input{1} = im;
     input{2} = flip(im,2);
+    
     
     tic;
     
@@ -35,6 +36,6 @@ for i=1:2
     curr_pos = store2hdf5('trial.h5',data,label,create,1000,curr_pos);    
     create = false;
     
-    fprintf('Elapsed Time for image #%d# a Single Image: %f\n',i,toc);
+    fprintf('Elapsed Time for image #%d#: %f\n',i,toc);
     disp('-----------------------------------------------')
 end

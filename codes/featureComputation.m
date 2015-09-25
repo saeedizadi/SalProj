@@ -1,4 +1,3 @@
-%function [featureMax,featureMaxCR,featureMaxBG,featureMaxEI,overlap,label] = featureComputation(input,gt,net)
 function [data,label] = featureComputation(input,gt,net)
 
 layerInx = [3 5 8 10 13 15 17 20 22 24 27 29 31];
@@ -15,20 +14,22 @@ for nInput=1:length(input)
     gt = logical(imresize(gt,[256,256]));
     
     
-    %Generating Superpixels for the image
-    disp('Generating Superpixels ...')
+    %Generating Superpixels for the image    
     
     if mirFlag == false
+        fprintf('\nWorking with Superpixels (Original) ...\n')
         [l, Am, ~, ~] = slic(im, 500, 60,3 ,'mean');
     else
+        fprintf('Working with Superpixels (Mirror) ...\n')
         l = flip(l,2);
+        gt = flip(gt,2);
     end
     
     numOfSPs = numel(unique(l));
     
     
     %Feedforward the input image and the intermediate features
-    disp('Feeding the Input Image Forward through the Net ...')
+    %disp('Feeding the Input Image Forward through the Net ...')
     res = feedforwardImage(im,net);
     
     %Extracting the Inermediate Features and resizing them into [256,256]
@@ -48,34 +49,33 @@ for nInput=1:length(input)
     
     
     %Perfor Avg. Pooling across every superpixel
-    fprintf('\nProcessing superpixels...\n');
-    for spNum = 1: numOfSPs
-        %fprintf('\b\b\b\b\ %3d ',spNum)
-        
-        %Compute mask for superpixels and context region
+    count = 0;
+    for spNum = 1: numOfSPs                
         
         %Use neighboring superpixels as the context area instead of
         %rectangular area
         [idxVec,masks] = neighSPs(l,Am,spNum,3);
         
-        %mask = ismember(l,spNum);
-        %idxVec = contextRegion(l,mask,1);
-        
-        %Compute the overlap and label for the superpixel
-        [overlap(spNum),label(spNum)] = computeOverlap(masks{1},gt);
-        
         %Vectorize mask for superpixel
         maskVec = masks{1}(:);
         
-        
-        featureSPAvg = mean(featureVec(maskVec,:),1);
-        featureCRAvg = mean(featureVec(idxVec,:),1);
-        
-        featuresSP(spNum,:) = featureSPAvg;
-        featuresCR(spNum,:) = featureCRAvg;
-        
-        %featuresSP(spNum,:) = featureSPAvg/norm(featureSPAvg,2);
-        %featuresCR(spNum,:) = featureCRAvg/norm(featureCRAvg,2);
+        %Compute the overlap and label for the superpixel
+        if mirFlag == false
+            [~ , tempLabel] = computeOverlap(masks{1},gt);
+        else            
+            [~ , tempLabel] = computeOverlap(masks{1},gt);
+        end
+        if ~isequal(tempLabel,-1)
+            count = count+1;
+            
+            label(count) = tempLabel;
+            
+            featuresSP(count,:) = mean(featureVec(maskVec,:),1);
+            featuresCR(count,:) = mean(featureVec(idxVec,:),1);
+                                     
+            %featuresSP(spNum,:) = featureSPAvg/norm(featureSPAvg,2);
+            %featuresCR(spNum,:) = featureCRAvg/norm(featureCRAvg,2);
+        end
         
     end
     
@@ -83,14 +83,12 @@ for nInput=1:length(input)
         featureOrg = featuresSP;
         featureOrgCR = featuresCR;
         featureOrgBG = mean(featureVec(bgMaskVec,:),1);
-        featureOrgEI = mean(featureVec,1);
         
-        clearvars -except input net nInput mirFlag layerInx l featureOrg featureOrgCR  featureOrgBG featureOrgEI bgMaskVec overlap label gt Am
+        clearvars -except overlap input net nInput mirFlag layerInx l featureOrg featureOrgCR  featureOrgBG bgMaskVec overlap label gt Am
     else
         featureMir = featuresSP;
         featureMirCR = featuresCR;
         featureMirBG = mean(featureVec(bgMaskVec,:),1);
-        featureMirEI = mean(featureVec,1);
     end
     mirFlag = true;
     
@@ -98,10 +96,9 @@ for nInput=1:length(input)
         featureMax = max(featureOrg,featureMir);
         featureMaxCR = max(featureOrgCR,featureMirCR);
         featureMaxBG = max(featureOrgBG,featureMirBG);
-        featureMaxEI = max(featureOrgEI,featureMirEI);
         
         featureLocContrast = gsqrt((featureMax-featureMaxCR).^2);
-        featureBgContrast = gsqrt(featureMax-repmat(featureMaxBG,[size(featureMax,1) 1]).^2);        
+        featureBgContrast = gsqrt(featureMax-repmat(featureMaxBG,[size(featureMax,1) 1]).^2);
         
         clearvars -except featureMax featureMaxCR featureLocContrast featureBgContrast label overlap
         
