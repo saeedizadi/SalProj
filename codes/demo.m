@@ -36,6 +36,6 @@ for i=1:10
     curr_pos = store2hdf5('trial.h5',data,label,create,1000,curr_pos);    
     create = false;
     
-    fprintf('Elapsed Time for image #%d#: %f\n',i,toc);
+    fprintf('Elapsed Time: %f\n',toc);
     disp('-----------------------------------------------')
 end
