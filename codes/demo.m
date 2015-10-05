@@ -17,7 +17,7 @@ clc;
 create = true;
 curr_pos = 0;
 
-for i=1:10
+for i=1:5
     fprintf('Processing %d/10...\n',i);
     
     im = imread([path files(i).name]);
